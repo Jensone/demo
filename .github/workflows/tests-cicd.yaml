@@ -1,0 +1,45 @@
+name: Tests CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-22
+
+    steps:
+    - name: Vérification du dépôt
+      uses: actions/checkout@v4
+
+    - name: Mise en place de PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, intl, pdo, sqlite, zip, opcache
+
+    - name: Installation des dépendances
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Lancement des tests
+      run: |
+        php bin/phpunit --log-junit tests/report.xml
+      continue-on-error: true
+
+    - name: Téléversement des résultats des tests
+      uses: actions/upload-artifact@v3
+      with:
+        name: Résultats des tests
+        path: tests/report.xml
+
+    - name: Installation de mailutils
+      run: sudo apt-get install -y mailutils
+
+    - name: Envoi d'un email notification
+      if: always()
+      run: |
+        cat tests/report.xml | mail -s "Test Results for Symfony" hello@agiliteach.org
